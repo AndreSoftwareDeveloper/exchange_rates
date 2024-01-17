@@ -92,6 +92,7 @@ class CurrencyDataManager:
                             break
 
                     writer.writerow(row)
+
         except Exception as e:
             update_error = f"An unexpected error occurred: {e}"
 
@@ -139,3 +140,4 @@ class CurrencyDataManager:
             else:
                 stats[col + '_mean'] = stats[col + '_median'] = stats[col + '_min'] = stats[col + '_max'] = None
         return stats
+CurrencyDataManager.update_exchange_rates()
