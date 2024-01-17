@@ -1,7 +1,7 @@
 from django_q.tasks import Schedule
+from datetime import datetime
 
 from .currency_data_manager import CurrencyDataManager
-from datetime import datetime
 
 update_error = None
 

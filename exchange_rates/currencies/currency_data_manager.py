@@ -53,21 +53,16 @@ class CurrencyDataManager:
                 except json.JSONDecodeError as json_err:
                     update_error = f"JSON decoding error occurred for {currency_codes[i]}: {json_err}"
 
-            if 'USD' in exchange_rates_data and 'CHF' in exchange_rates_data:
-                for rate_usd in exchange_rates_data['USD']:
-                    date_usd = rate_usd['effectiveDate']
-                    rate_chf = next((d['mid'] for d in exchange_rates_data['CHF'] if d['effectiveDate'] == date_usd),
-                                    None)
-                    if rate_chf is not None:
-                        rate_usd['CHF_USD'] = rate_chf / rate_usd['mid']
-
-            if 'USD' in exchange_rates_data and 'EUR' in exchange_rates_data:
-                for rate_usd in exchange_rates_data['USD']:
-                    date_usd = rate_usd['effectiveDate']
-                    rate_eur = next((d['mid'] for d in exchange_rates_data['EUR'] if d['effectiveDate'] == date_usd),
-                                    None)
-                    if rate_eur is not None:
-                        rate_usd['EUR_USD'] = rate_eur / rate_usd['mid']
+            for currency_code_to_calculate in ['CHF', 'EUR']:
+                if 'USD' in exchange_rates_data and currency_code_to_calculate in exchange_rates_data:
+                    for rate_usd in exchange_rates_data['USD']:
+                        date_usd = rate_usd['effectiveDate']
+                        rate_currency = next(
+                            (d['mid'] for d in exchange_rates_data[currency_code_to_calculate] if
+                             d['effectiveDate'] == date_usd),
+                            None)
+                        if rate_currency is not None:
+                            rate_usd[f'{currency_code_to_calculate}_USD'] = rate_currency / rate_usd['mid']
 
             all_dates = sorted(set(rate['effectiveDate'] for rates in exchange_rates_data.values() for rate in rates),
                                reverse=True)
@@ -84,13 +79,17 @@ class CurrencyDataManager:
                         rate = next((d['mid'] for d in exchange_rates_data[code] if d['effectiveDate'] == date), None)
                         row[f'{code}/PLN'] = rate
 
-                    chf_usd_rate = next(
-                        (d['CHF_USD'] for d in exchange_rates_data['USD'] if d['effectiveDate'] == date), None)
-                    row['CHF/USD'] = round(chf_usd_rate, 4) if chf_usd_rate is not None else None
+                    for rate_usd in exchange_rates_data['USD']:
+                        date_usd = rate_usd['effectiveDate']
 
-                    eur_usd_rate = next(
-                        (d['EUR_USD'] for d in exchange_rates_data['USD'] if d['effectiveDate'] == date), None)
-                    row['EUR/USD'] = round(eur_usd_rate, 4) if eur_usd_rate is not None else None
+                        if date_usd == date:
+                            chf_usd_rate = rate_usd.get('CHF_USD')
+                            eur_usd_rate = rate_usd.get('EUR_USD')
+
+                            if chf_usd_rate is not None and eur_usd_rate is not None:
+                                row['CHF/USD'] = round(chf_usd_rate, 4)
+                                row['EUR/USD'] = round(eur_usd_rate, 4)
+                            break
 
                     writer.writerow(row)
         except Exception as e:
@@ -115,14 +114,15 @@ class CurrencyDataManager:
             with open(output_file, 'w', newline='') as csvfile:
                 fieldnames = ['date'] + selected_columns
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
                 writer.writeheader()
                 writer.writerows(selected_data)
             return statistics
+
         except FileNotFoundError:
             saving_error = f"Input file not found: {input_file}"
         except Exception as e:
             saving_error = f"An unexpected error occurred: {e}"
+
         if 'saving_error' in locals():
             return saving_error
 
