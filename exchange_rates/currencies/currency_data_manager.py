@@ -22,18 +22,23 @@ class CurrencyDataManager:
             exchange_rates_data = {}
 
             for i, url in enumerate(urls):
+
                 try:
                     response = requests.get(url)
                     response.raise_for_status()
+
                 except HTTPError as http_err:
                     update_error = f"HTTP error occurred while fetching data for {currency_codes[i]}: {http_err}"
                     continue
+
                 except ConnectionError as conn_err:
                     update_error = f"Connection error occurred while fetching data for {currency_codes[i]}: {conn_err}"
                     continue
+
                 except json.JSONDecodeError as json_err:
                     update_error = f"JSON decoding error occurred: {json_err}"
                     continue
+
                 except RequestException as req_err:
                     update_error = f"Request error occurred while fetching data for {currency_codes[i]}: {req_err}"
                     continue
@@ -47,6 +52,7 @@ class CurrencyDataManager:
                             rate['effectiveDate'] = datetime.strptime(rate['effectiveDate'], "%Y-%m-%d").date()
 
                         exchange_rates_data[currency_codes[i]] = rates
+
                     else:
                         update_error = f"No data about exchange rates for: {currency_codes[i]}."
 
@@ -55,12 +61,14 @@ class CurrencyDataManager:
 
             for currency_code_to_calculate in ['CHF', 'EUR']:
                 if 'USD' in exchange_rates_data and currency_code_to_calculate in exchange_rates_data:
+
                     for rate_usd in exchange_rates_data['USD']:
                         date_usd = rate_usd['effectiveDate']
                         rate_currency = next(
                             (d['mid'] for d in exchange_rates_data[currency_code_to_calculate] if
                              d['effectiveDate'] == date_usd),
                             None)
+
                         if rate_currency is not None:
                             rate_usd[f'{currency_code_to_calculate}_USD'] = rate_currency / rate_usd['mid']
 
@@ -101,6 +109,7 @@ class CurrencyDataManager:
 
     @staticmethod
     def save_selected_columns(selected_columns):
+
         script_dir = os.path.dirname(os.path.realpath(__file__))
         input_file = os.path.join(script_dir, 'all_currency_data.csv')
         output_file = os.path.join(script_dir, 'selected_currency_data.csv')
@@ -117,10 +126,12 @@ class CurrencyDataManager:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(selected_data)
+
             return statistics
 
         except FileNotFoundError:
             saving_error = f"Input file not found: {input_file}"
+
         except Exception as e:
             saving_error = f"An unexpected error occurred: {e}"
 
@@ -130,8 +141,10 @@ class CurrencyDataManager:
     @staticmethod
     def __calculate_statistics(columns, data):
         stats = {}
+
         for col in columns:
             values = [float(row[col]) for row in data if row[col].replace('.', '', 1).isdigit()]
+
             if values:
                 stats[col + '_mean'] = np.mean(values)
                 stats[col + '_median'] = np.median(values)
@@ -139,5 +152,8 @@ class CurrencyDataManager:
                 stats[col + '_max'] = np.max(values)
             else:
                 stats[col + '_mean'] = stats[col + '_median'] = stats[col + '_min'] = stats[col + '_max'] = None
+
         return stats
+
+
 CurrencyDataManager.update_exchange_rates()
